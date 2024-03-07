@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<script src="../ln.js"></script>
+	</head>
+
+	<body>
+		<script>
+			// create a scene and add a single cube
+			let scene = new ln.Scene();
+			scene.Add(new ln.Cube(new ln.Vector(-1, -1, -1), new ln.Vector(1, 1, 1)));
+
+			// define camera parameters
+			let eye = new ln.Vector(4, 3, 2);    // camera position
+			let center = new ln.Vector(0, 0, 0); // camera looks at
+			let up = new ln.Vector(0, 0, 1);     // up direction
+
+			// define rendering parameters
+			let width = 1024.0;  // rendered width
+			let height = 1024.0; // rendered height
+			let fovy = 50.0;     // vertical field of view, degrees
+			let znear = 0.1;     // near z plane
+			let zfar = 10.0;     // far z plane
+			let step = 0.01;     // how finely to chop the paths for visibility testing
+
+			// compute 2D paths that depict the 3D scene
+			let paths = scene.Render(eye, center, up, width, height, fovy, znear, zfar, step);
+			console.log(scene);
+
+			let ns = "http://www.w3.org/2000/svg";
+			let svg = document.createElementNS(ns, "svg");
+			svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+			svg.setAttribute("width", "100vw");
+			svg.setAttribute("height", "100vh");
+			for (let p of paths.paths) {
+				let d = null;
+				for (let point of p.points) {
+					if (d === null) d = `M ${point.X} ${width - point.Y}`;
+					else d += ` L ${point.X} ${width - point.Y} `;
+				}
+				let path = document.createElementNS(ns, "path");
+				path.setAttribute("style", "stroke: black;");
+				path.setAttribute("d", d);
+				svg.appendChild(path);
+			}
+			document.body.appendChild(svg);
+
+		</script>
+	</body>
+
+</html>

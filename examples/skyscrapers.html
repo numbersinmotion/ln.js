@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<script src="../ln.js"></script>
+	</head>
+
+	<body>
+		<script>
+			let scene = new ln.Scene();
+			let n = 15;
+			for (let x = -n; x <= n; x++) {
+				for (let y = -n; y <= n; y++) {
+					if (x === 2 && y === 1) continue;
+					let p = Math.random() * 0.25 + 0.2;
+					// let p = 0.25;
+					// let dx = Math.random() * 0.5 - 0.25;
+					// let dy = Math.random() * 0.5 - 0.25;
+					let fx = x;
+					let fy = y;
+					let fz = Math.random() * 1 + 1;
+					let shape = new ln.Cube(new ln.Vector(x - p, y - p, 0), new ln.Vector(x + p, y + p, fz));
+					scene.Add(shape);
+				}
+			}
+
+			let eye = new ln.Vector(1.75, 1.25, 6);
+			let center = new ln.Vector(0, 0, 0);
+			let up = new ln.Vector(0, 0, 1);
+			let width = 1024.0;
+			let height = 1024.0;
+			let paths = scene.Render(eye, center, up, width, height, 100, 0.1, 100, 0.01);
+			console.log(paths);
+
+			let ns = "http://www.w3.org/2000/svg";
+			let svg = document.createElementNS(ns, "svg");
+			svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+			svg.setAttribute("width", "100vw");
+			svg.setAttribute("height", "100vh");
+			for (let p of paths.paths) {
+				let d = null;
+				for (let point of p.points) {
+					if (d === null) d = `M ${point.X} ${width - point.Y}`;
+					else d += ` L ${point.X} ${width - point.Y} `;
+				}
+				let path = document.createElementNS(ns, "path");
+				path.setAttribute("style", "fill: none; stroke: black;");
+				path.setAttribute("d", d);
+				svg.appendChild(path);
+			}
+			document.body.appendChild(svg);
+		</script>
+	</body>
+
+</html>

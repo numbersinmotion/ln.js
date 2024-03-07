@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<script src="../ln.js"></script>
+		<style>
+			svg {
+				margin: auto;
+				position: absolute;
+				inset: 0;
+			}
+		</style>
+	</head>
+
+	<body>
+		<script>
+
+			class CustomShapeFunction {
+				constructor(func, box, direction, pct, isSwitch) { [this.Func, this.Box, this.Direction, this.pct, this.isSwitch] = [func, box, direction, pct, isSwitch]; }
+				static Below() { return "Below"; }
+				static Above() { return "Above"; }
+				Compile() { return null; }
+				BoundingBox() { return this.Box; }
+				Contains(v) {
+					if (this.Direction === "Below") return v.Z < this.Func(v.X, v.Y);
+					else return v.Z > this.Func(v.X, v.Y);
+				}
+				Intersect(ray) {
+					let step = 1 / 64;
+					let sign = this.Contains(ray.Position(step));
+					for (let t = step; t < 10; t += step) {
+						let v = ray.Position(t);
+						if (this.Contains(v) !== sign && this.Box.Contains(v)) return new ln.Hit(this, t);
+					}
+					return ln.Hit.none();
+				}
+				Paths() {
+					let paths = new ln.Paths();
+					let fine = 1 / 256;
+					if (this.isSwitch) {
+						for (let a = 0; a < 360; a += 10) {
+							let path = new ln.Path();
+							for (let r = 0; r <= 8; r += fine) {
+								let radius = r;
+								let angle = ln.Utils.degToRad(a + 10 * this.pct);
+								let [x, y] = [radius * Math.cos(angle), radius * Math.sin(angle)];
+								let z = this.Func(x, y);
+								z = Math.min(z, this.Box.Max.Z);
+								z = Math.max(z, this.Box.Min.Z);
+								path.Add(new ln.Vector(x, y, z));
+							}
+							paths.Add(path);
+						}
+					} else {
+						for (let r = 0.1; r < 10; r += 0.15) {
+							let path = new ln.Path();
+							for (let a = 0; a <= 360; a += 5) {
+								let radius = r + 0.15 * this.pct;
+								let angle = ln.Utils.degToRad(a);
+								let [x, y] = [radius * Math.cos(angle), radius * Math.sin(angle)];
+								let z = this.Func(x, y);
+								z = Math.min(z, this.Box.Max.Z);
+								z = Math.max(z, this.Box.Min.Z);
+								path.Add(new ln.Vector(x, y, z));
+							}
+							paths.Add(path);
+						}
+					}
+					return paths;
+				}
+			};
+
+			// create the scenes
+			let [redScene, blueScene] = [new ln.Scene(), new ln.Scene()];
+
+			// initialize shape inputs
+			let box = new ln.Box(new ln.Vector(-2, -2, -4), new ln.Vector(2, 2, 2));
+			let func = function (x, y) { return -1 / (x * x + y * y); };
+
+			// create the shapes
+			let redShape = new CustomShapeFunction(func, box, CustomShapeFunction.Below, 0, false);
+			let blueShape = new CustomShapeFunction(func, box, CustomShapeFunction.Below, 0, true);
+
+			// add shapes to scenes
+			redScene.addShape(redShape);
+			blueScene.addShape(blueShape);
+
+			// rendering parameters
+			let [eye, center, up] = [new ln.Vector(3, 0, 3), new ln.Vector(1.5, 0, 0), new ln.Vector(0, 0, 1)];
+			let [width, height] = [1024, 1024];
+			let [fovy, znear, zfar, step] = [50, 0.1, 100, 0.01];
+
+			function drawScene() {
+
+				// render the scenes - get the paths
+				let redPaths = redScene.Render(eye, center, up, width, height, fovy, znear, zfar, step);
+				let bluePaths = blueScene.Render(eye, center, up, width, height, fovy, znear, zfar, step);
+
+				let ns = "http://www.w3.org/2000/svg";
+				let svg = document.createElementNS(ns, "svg");
+				svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+				svg.setAttribute("width", "100vw");
+				svg.setAttribute("height", "100vh");
+				let border = document.createElementNS(ns, "path");
+				border.setAttribute("style", "fill: none; stroke: black;");
+				border.setAttribute("d", `M 0 0 L ${width} 0 L ${width} ${height} L 0 ${height} z`);
+				svg.appendChild(border);
+				for (let p of redPaths.paths) {
+					let d = null;
+					for (let point of p.points) {
+						if (d === null) d = `M ${point.X} ${width - point.Y}`;
+						else d += ` L ${point.X} ${width - point.Y} `;
+					}
+					let path = document.createElementNS(ns, "path");
+					path.setAttribute("style", "fill: none; stroke: red;");
+					path.setAttribute("d", d);
+					svg.appendChild(path);
+				}
+				for (let p of bluePaths.paths) {
+					let d = null;
+					for (let point of p.points) {
+						if (d === null) d = `M ${point.X} ${width - point.Y}`;
+						else d += ` L ${point.X} ${width - point.Y} `;
+					}
+					let path = document.createElementNS(ns, "path");
+					path.setAttribute("style", "fill: none; stroke: blue;");
+					path.setAttribute("d", d);
+					svg.appendChild(path);
+				}
+				let oldSvg = document.body.querySelector("svg");
+				if (oldSvg) oldSvg.remove();
+				document.body.appendChild(svg);
+
+				frameCount++;
+				if (frameCount === totalFrameCount) frameCount = 0;
+				redShape.pct, blueShape.pct = frameCount / totalFrameCount;
+
+				window.requestAnimationFrame(drawScene);
+			}
+
+			let frameCount = 0;
+			let totalFrameCount = 10;
+			window.requestAnimationFrame(drawScene);
+
+		</script>
+	</body>
+
+</html>
